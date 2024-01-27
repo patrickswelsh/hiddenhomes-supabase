@@ -6,12 +6,28 @@ import Stripe from "npm:stripe";
 
 const stripe = Stripe(Deno.env.get("STRIPE_API_KEY"));
 
-const server = Deno.listen({ port: 8080 });
-
-
 console.log("Hello from Stipe Webhook!")
 
-Deno.serve(async (req) => {
+Deno.serve(async (request) => {
+  const signature = request.headers.get("Stripe-Signature");
+
+    // First step is to verify the event. The .text() method must be used as the
+  // verification relies on the raw request body rather than the parsed JSON.
+  const body = await request.text();
+  let receivedEvent;
+  try {
+    receivedEvent = await stripe.webhooks.constructEventAsync(
+      body,
+      signature,
+      Deno.env.get("STRIPE_WEBHOOK_SIGNING_SECRET"),
+      undefined
+    );
+  } catch (err) {
+    return new Response(err.message, { status: 400 });
+  }
+
+  console.log(receivedEvent)
+  return new Response(JSON.stringify({ok : true}), { status: 200 });
 
 })
 
